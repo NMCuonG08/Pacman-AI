@@ -5,18 +5,21 @@ import sys
 from Draw_Button import Button
 from Algorithms import bfs,dfs,a_star,greedy_search,uniform_cost_search
 
-# Khởi tạo Pygame
+from Setting import draw_settings_panel,handle_dropdown_events,init_dropdown_states
+
+from Panel import draw_info_panel
+
 pygame.init()
 
 # Kích thước màn hình
 SCREEN_WIDTH = 1500  # Điều chỉnh kích thước để phù hợp với kích thước lưới
 SCREEN_HEIGHT = 750
 GRID_SIZE = 40  # Kích thước ô lưới
-
+game_started = False
 # Thiết lập màn hình
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Pacman AI")
-
+is_settings_open = False
 # Tải hình ảnh
 pacman_image = pygame.image.load("images/pacman.png")
 ghost_image = pygame.image.load("images/ghost.png")
@@ -32,21 +35,25 @@ pellet_image = pygame.transform.scale(pellet_image, (GRID_SIZE // 2, GRID_SIZE /
 score = 0
 
 # Hàm cập nhật điểm số
+
+import pygame
 def update_score():
     global score
     score += 10
-# Định nghĩa lớp Pacman
-import pygame
+
 
 class Pacman:
-    def __init__(self, x, y, move_delay=2):
+    def __init__(self, x, y, move_delay=0):
         self.x = x
         self.y = y
         self.dx = 0
         self.dy = 0
         self.move_delay = move_delay  # Số khung hình phải đợi trước khi di chuyển
         self.move_counter = 0  # Bộ đếm để kiểm soát tốc độ di chuyển
-        self.pacman_image = pacman_image  # Tải ảnh Pacman
+        self.pacman_image = pacman_image
+        self.is_hunting = False  # Biến để theo dõi chế độ săn
+        self.hunting_time = 0
+        # Tải ảnh Pacman
 
     def update_direction(self, dx, dy):
         """ Cập nhật hướng đi theo phím bấm """
@@ -54,18 +61,27 @@ class Pacman:
         self.dy = dy
 
     def move(self, maze):
-        # Chỉ di chuyển khi bộ đếm đạt giá trị delay
         if self.move_counter >= self.move_delay:
-            # Kiểm tra xem vị trí tiếp theo có phải là tường không (1 đại diện cho tường)
             if maze[self.y + self.dy][self.x + self.dx] != 1:
                 if maze[self.y + self.dy][self.x + self.dx] == 2:
-                    update_score()  # Cập nhật điểm số nếu ăn pellet
+                    update_score()  # Viên đạn bình thường
                     maze[self.y + self.dy][self.x + self.dx] = 0
+                elif maze[self.y + self.dy][self.x + self.dx] == 3:  # Viên đạn đặc biệt
+                    update_score(50)  # Tăng điểm cho viên đạn đặc biệt
+                    maze[self.y + self.dy][self.x + self.dx] = 0
+                    self.is_hunting = True  # Bắt đầu chế độ săn
+                    self.hunting_time = 5 * 60  # 5 giây ở 60 FPS
                 self.x += self.dx
                 self.y += self.dy
-            self.move_counter = 0  # Reset bộ đếm sau khi di chuyển
+            self.move_counter = 0
         else:
-            self.move_counter += 1  # Tăng bộ đếm sau mỗi khung hình
+            self.move_counter += 1
+
+        # Giảm thời gian săn nếu đang trong chế độ săn
+        if self.is_hunting:
+            self.hunting_time -= 1
+            if self.hunting_time <= 0:
+                self.is_hunting = False  # Tăng bộ đếm sau mỗi khung hình
 
     def draw(self, screen):
         # Xác định góc quay dựa trên hướng di chuyển
@@ -83,10 +99,9 @@ class Pacman:
         # Vẽ Pacman lên màn hình tại vị trí (x, y)
         screen.blit(rotated_image, (self.x * GRID_SIZE, self.y * GRID_SIZE))
 
-
 # Định nghĩa lớp Ghost
 class Ghost:
-    def __init__(self, x, y, strategy, algorithm, image, move_delay=10):
+    def __init__(self, x, y, strategy, algorithm, image, color, move_delay=0):
         self.x = x
         self.y = y
         self.move_delay = move_delay  # Số khung hình phải đợi trước khi di chuyển
@@ -94,11 +109,19 @@ class Ghost:
         self.strategy = strategy
         self.algorithm = algorithm  # Thuật toán di chuyển
         self.image = image
+        self.color = color  # Thêm màu sắc riêng cho Ghost
+        self.original_position = (x, y)  # Lưu vị trí gốc
+        self.is_alive = True
+        self.trail = deque(maxlen=50)  # Lưu vết, tối đa 50 vị trí
+
+    def reset_position(self):
+        self.x, self.y = self.original_position  # Khôi phục về vị trí gốc
+        self.is_alive = True
+        self.trail.clear()  # Xóa vết di chuyển
 
     def move(self, target_x, target_y, maze):
         # Chỉ di chuyển khi bộ đếm đạt đến giá trị delay
         if self.move_counter >= self.move_delay:
-            # Sử dụng thuật toán đã chọn để đuổi theo Pacman
             if self.algorithm == 'BFS':
                 path = bfs((self.x, self.y), (target_x, target_y), maze)
             elif self.algorithm == 'DFS':
@@ -112,12 +135,18 @@ class Ghost:
 
             if path and len(path) > 1:  # Kiểm tra nếu path hợp lệ và có nhiều hơn một bước
                 self.x, self.y = path[1]
+                self.trail.append((self.x, self.y))  # Lưu vị trí mới vào vết di chuyển
             self.move_counter = 0  # Reset bộ đếm sau khi di chuyển
         else:
             self.move_counter += 1  # Tăng bộ đếm sau mỗi khung hình
 
     def draw(self, screen):
+        # Vẽ dấu vết trước
+        if len(self.trail) > 1:
+            pygame.draw.lines(screen, self.color, False, [(x * GRID_SIZE + GRID_SIZE // 2, y * GRID_SIZE + GRID_SIZE // 2) for x, y in self.trail], 3)
+        # Vẽ ghost với màu sắc đã chỉ định
         screen.blit(self.image, (self.x * GRID_SIZE, self.y * GRID_SIZE))
+
 
 
 
@@ -134,29 +163,58 @@ def draw_maze(screen, maze):
             elif tile == 2:
                 screen.blit(pellet_image, (x * GRID_SIZE + GRID_SIZE // 4, y * GRID_SIZE + GRID_SIZE // 4))
 
-# Mê cung (0 = đường đi, 1 = tường, 2 = pellet)
-maze = [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-    [1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1],
-    [1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1],
-    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-    [1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
-    [1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
-    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-    [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 1, 2, 2, 2, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-    [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-    [1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-    [1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1],
-    [1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1],
-    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-    [1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
-    [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-    [1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
-    [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-]
 
+def create_maze():
+    return [
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1],
+        [1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
+        [1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 1, 2, 2, 2, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1],
+        [1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
+        [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    ]
+maze = create_maze()
+
+def reset_game():
+    global pacman, ghosts, score, maze
+
+    # Reset Pacman's position
+    pacman = Pacman(1, 1)
+
+    # Reset ghost positions
+    ghosts = [
+        Ghost(14, 7, 'chase', algorithm='BFS', image=blue, color=(255, 0, 0)),
+        Ghost(13, 8, 'random', algorithm='DFS', image=green,  color=(0, 255, 0)),
+        Ghost(14, 8, 'chase', algorithm='A*', image=red,color=(0, 0, 255)),
+        Ghost(15, 8, 'random', algorithm='Uniform Cost', image=yellow,color=(255, 0, 255))
+    ]
+
+    # Reset the score
+    score = 0
+
+    # Reset the maze with pellets (2) and walls (1)
+    maze = create_maze()
+
+def check_collision():
+    for ghost in ghosts:
+        if pacman.x == ghost.x and pacman.y == ghost.y:
+            return True
+    return False
+
+ghosts_paused = False
 pacman = Pacman(1, 1)
 #ghost = Ghost(12, 5)
 
@@ -166,67 +224,118 @@ red = pygame.image.load("images/red.png")
 yellow = pygame.image.load("images/yellow.png")
 
 ghosts = [
-    Ghost(14, 7, 'chase', algorithm='BFS',image= blue),   # Ghost sẽ chạy theo Pacman
-    Ghost(13, 8, 'random', algorithm='DFS',image= green),  # Ghost sẽ di chuyển ngẫu nhiên
-    Ghost(14, 8, 'chase',algorithm='A*',image=red),   # Ghost khác cũng chạy theo
-    Ghost(15, 8, 'random',algorithm='Uniform Cost',image=yellow)    # Ghost này cũng di chuyển ngẫu nhiên
-]
+    Ghost(14, 7, 'chase', algorithm='BFS', image=blue, color=(255, 0, 0)),
+    Ghost(13, 8, 'random', algorithm='DFS', image=green, color=(0, 255, 0)),
 
+    Ghost(14, 8, 'chase', algorithm='A*', image=red, color=(0, 0, 255)),
+    Ghost(15, 8, 'random', algorithm='Uniform Cost', image=yellow, color=(255, 0, 255))
+]
+dropdown_states = init_dropdown_states(ghosts)
 # Vòng lặp game
 running = True
 clock = pygame.time.Clock()
-
+settings_button = pygame.Rect(SCREEN_WIDTH - 120, 20, 100, 40)
 
 start_button = Button(1150, 10, 200, 50, 'Reset', color=(0, 128, 255), hover_color=(70, 130, 180))
 quit_button = Button(1150, 100, 200, 50, 'Stop', color=(255, 0, 0), hover_color=(255, 99, 71))
-
+avatar_path = "C:/Users/ASUS/Pictures/Ảnh/Screenshots/x.png"
+# Game loop
 while running:
     screen.fill((0, 0, 0))
 
-    # Xử lý sự kiện
-    for event in pygame.event.get():
+    # Event handling
+    events = pygame.event.get()  # Chỉ gọi pygame.event.get() một lần
+    for event in events:
         if event.type == pygame.QUIT:
             running = False
             pygame.quit()
             sys.exit()
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_LEFT:
-                pacman.dx = -1
-                pacman.dy = 0
-            elif event.key == pygame.K_RIGHT:
-                pacman.dx = 1
-                pacman.dy = 0
-            elif event.key == pygame.K_UP:
-                pacman.dx = 0
-                pacman.dy = -1
-            elif event.key == pygame.K_DOWN:
-                pacman.dx = 0
-                pacman.dy = 1
-        if start_button.is_clicked(event):
-            print("Start Game button clicked!")
-        if quit_button.is_clicked(event):
-            print("Quit button clicked!")
-            running = False
-    # Di chuyển Pacman và Ghost
-    pacman.move(maze)
-   # ghost.move(pacman.x, pacman.y, maze)
 
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = pygame.mouse.get_pos()
 
+            # Nhấn nút Settings
+            if settings_button.collidepoint(mouse_pos):
+                is_settings_open = True
 
-    # Vẽ mê cung
-    draw_maze(screen, maze)
-    draw_score(screen)
-    # Vẽ Pacman và Ghost
-    pacman.draw(screen)
-   # ghost.draw(screen)
+            if is_settings_open:
+                dropdown_rects, dropdown_options_list, close_button = draw_settings_panel(screen, ghosts,
+                                                                                          dropdown_states)
+                handle_dropdown_events(event, dropdown_rects, dropdown_options_list, ghosts, dropdown_states)
+
+                mouse_pos = pygame.mouse.get_pos()
+
+                # Kiểm tra nếu nút "Close" được nhấn
+                if close_button.collidepoint(mouse_pos):
+                    is_settings_open = False# Thay đổi thuật toán cho tất cả ma
+
+        # Nếu Settings đang đóng, xử lý game logic
+        if not is_settings_open:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p:  # Dừng/tiếp tục ma
+                    ghosts_paused = not ghosts_paused
+
+                if event.key in [pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN]:
+                    game_started = True
+                    if event.key == pygame.K_LEFT:
+                        pacman.dx, pacman.dy = -1, 0
+                    elif event.key == pygame.K_RIGHT:
+                        pacman.dx, pacman.dy = 1, 0
+                    elif event.key == pygame.K_UP:
+                        pacman.dx, pacman.dy = 0, -1
+                    elif event.key == pygame.K_DOWN:
+                        pacman.dx, pacman.dy = 0, 1
+
+            if start_button.is_clicked(event):
+                reset_game()
+                game_started = False
+
+            if quit_button.is_clicked(event):
+                running = False
+
+    # Nếu Settings đang mở, chỉ vẽ giao diện Settings
+    if is_settings_open:
+        dropdown_rect, dropdown_options, close_button = draw_settings_panel(screen, ghosts,
+                                                                                          dropdown_states)
+    else:
+        # Các logic game khác (di chuyển Pacman, Ghosts)
+        if game_started:
+            pacman.move(maze)
+
+            if not ghosts_paused:
+                for ghost in ghosts:
+                    ghost.move(pacman.x, pacman.y, maze)
+                    if ghost.is_alive and pacman.x == ghost.x and pacman.y == ghost.y:
+                        if pacman.is_hunting:
+                            ghost.is_alive = False
+                            pygame.time.set_timer(pygame.USEREVENT, 5000)
+                        else:
+                            reset_game()
+
+        draw_maze(screen, maze)
+        draw_score(screen)
+        pacman.draw(screen)
+        for ghost in ghosts:
+            ghost.draw(screen)
+            if not ghost.is_alive:
+                ghost.reset_position()
+
+        if ghosts_paused:
+            font = pygame.font.Font(None, 74)
+            text = font.render("Ghosts Paused", True, (255, 0, 0))
+            screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2))
+
+    # Luôn vẽ các nút
+    draw_info_panel(screen, avatar_path)
     start_button.draw(screen)
     quit_button.draw(screen)
-    for ghost in ghosts:
-        ghost.move(pacman.x, pacman.y, maze)
-        ghost.draw(screen)
+    pygame.draw.rect(screen, (50, 150, 50), settings_button)
+    font = pygame.font.Font(None, 24)
+    text = font.render("Settings", True, (255, 255, 255))
+    screen.blit(text, (settings_button.x + 10, settings_button.y + 10))
 
-    # Cập nhật màn hình
+    # Update display and clock tick
     pygame.display.flip()
-    clock.tick(10)
+    clock.tick(5)
 
-pygame.quit()
+

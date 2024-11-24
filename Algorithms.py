@@ -5,7 +5,6 @@ def bfs(start, target, maze):
     visited = set()
     visited.add(start)
     parents = {start: None}
-
     while queue:
         current = queue.popleft()
         if current == target:
@@ -14,7 +13,6 @@ def bfs(start, target, maze):
                 path.append(current)
                 current = parents[current]
             return path[::-1]
-
         x, y = current
         for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
             next_pos = (x + dx, y + dy)
@@ -28,44 +26,42 @@ def bfs(start, target, maze):
     return None
 
 
-
-
-
-
-
-
 def dfs(start, target, maze):
     stack = [start]
-    visited = set()
+    visited = set([start])  # Đánh dấu ngay khi thêm vào stack
     parents = {start: None}
 
     while stack:
         current = stack.pop()
+
         if current == target:
+            # Xây dựng đường đi từ điểm đích về điểm bắt đầu
             path = []
             while current:
                 path.append(current)
                 current = parents[current]
             return path[::-1]
 
-        visited.add(current)
         x, y = current
+
+        # Duyệt qua các ô kề (trên, dưới, trái, phải)
         for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-            next_pos = (x + dx, y + dy)
-            if (0 <= next_pos[0] < len(maze[0]) and
-                0 <= next_pos[1] < len(maze) and
-                maze[next_pos[1]][next_pos[0]] != 1 and
-                next_pos not in visited):
+            next_x, next_y = x + dx, y + dy
+            next_pos = (next_x, next_y)
+
+            # Kiểm tra nếu vị trí hợp lệ và chưa được thăm
+            if (0 <= next_x < len(maze[0]) and
+                    0 <= next_y < len(maze) and
+                    maze[next_y][next_x] != 1 and
+                    next_pos not in visited):
                 stack.append(next_pos)
+                visited.add(next_pos)  # Đánh dấu vị trí mới là đã thăm
                 parents[next_pos] = current
+
+
+    # Nếu không tìm thấy đường đi, trả về None
+    print("No path found.")
     return None
-
-
-
-
-
-
-
 
 
 def a_star(start, target, maze):
