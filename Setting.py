@@ -58,7 +58,7 @@ is_dropdown_open = [False]  # Một danh sách trạng thái cho các dropdown
 def draw_algorithm_dropdown(screen, x, y, current_algorithm, is_open):
     """Vẽ menu lựa chọn thuật toán"""
     font = pygame.font.Font(None, 24)
-    options = ["Random", "BFS", "DFS"]
+    options = ["A*", "BFS",'Uniform Cost', 'Greedy','Hill Climbing','Simulated Annealing','Genetic Algorithm']
     dropdown_width, dropdown_height = 200, 30
 
     # Vẽ menu hiện tại

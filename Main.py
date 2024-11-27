@@ -3,7 +3,7 @@ import random
 from collections import deque
 import sys
 from Draw_Button import Button
-from Algorithms import bfs,dfs,a_star,greedy_search,uniform_cost_search
+from Algorithms import bfs,dfs,a_star,greedy_search,uniform_cost_search,hill_climbing,genetic_algorithm,beam_search,simulated_annealing
 
 from Setting import draw_settings_panel,handle_dropdown_events,init_dropdown_states
 
@@ -101,12 +101,11 @@ class Pacman:
 
 # Định nghĩa lớp Ghost
 class Ghost:
-    def __init__(self, x, y, strategy, algorithm, image, color, move_delay=0):
+    def __init__(self, x, y, algorithm, image, color, move_delay=1):
         self.x = x
         self.y = y
         self.move_delay = move_delay  # Số khung hình phải đợi trước khi di chuyển
         self.move_counter = 0
-        self.strategy = strategy
         self.algorithm = algorithm  # Thuật toán di chuyển
         self.image = image
         self.color = color  # Thêm màu sắc riêng cho Ghost
@@ -132,10 +131,22 @@ class Ghost:
                 path = greedy_search((self.x, self.y), (target_x, target_y), maze)
             elif self.algorithm == 'Uniform Cost':
                 path = uniform_cost_search((self.x, self.y), (target_x, target_y), maze)
+            elif self.algorithm == 'Hill Climbing':
+                path = hill_climbing((self.x, self.y), (target_x, target_y), maze)
+            elif self.algorithm == 'Simulated Annealing':
+                path = simulated_annealing((self.x, self.y), (target_x, target_y), maze)
+            elif self.algorithm == 'Genetic Algorithm':
+                path = genetic_algorithm((self.x, self.y), (target_x, target_y), maze)
+            elif self.algorithm == 'Beam Search':
+                path = beam_search((self.x, self.y), (target_x, target_y), maze)
+
 
             if path and len(path) > 1:  # Kiểm tra nếu path hợp lệ và có nhiều hơn một bước
                 self.x, self.y = path[1]
-                self.trail.append((self.x, self.y))  # Lưu vị trí mới vào vết di chuyển
+                self.trail.append((self.x, self.y))
+            else:
+                print(f"{self.algorithm} không tìm thấy lộ trình hợp lệ.")
+            # Lưu vị trí mới vào vết di chuyển
             self.move_counter = 0  # Reset bộ đếm sau khi di chuyển
         else:
             self.move_counter += 1  # Tăng bộ đếm sau mỗi khung hình
@@ -165,41 +176,43 @@ def draw_maze(screen, maze):
 
 
 def create_maze():
-    return [
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-        [1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-        [1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1],
-        [1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1],
-        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-        [1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
-        [1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
-        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-        [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 1, 2, 2, 2, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-        [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-        [1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-        [1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1],
-        [1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 2, 1],
-        [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-        [1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
-        [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-        [1, 2, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
-        [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 1],
-        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    ]
+    return  (
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1],
+    [1, 2, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1],
+    [1, 1, 1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
+    [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 maze = create_maze()
 
 def reset_game():
     global pacman, ghosts, score, maze
 
+    # Lưu các cài đặt thuật toán hiện tại
+    ghost_algorithms = [ghost.algorithm for ghost in ghosts]
+
     # Reset Pacman's position
     pacman = Pacman(1, 1)
 
-    # Reset ghost positions
+    # Reset Ghost positions nhưng giữ nguyên thuật toán đã chọn
     ghosts = [
-        Ghost(14, 7, 'chase', algorithm='BFS', image=blue, color=(255, 0, 0)),
-        Ghost(13, 8, 'random', algorithm='DFS', image=green,  color=(0, 255, 0)),
-        Ghost(14, 8, 'chase', algorithm='A*', image=red,color=(0, 0, 255)),
-        Ghost(15, 8, 'random', algorithm='Uniform Cost', image=yellow,color=(255, 0, 255))
+        Ghost(26, 7, algorithm='BFS', image=blue, color=(0, 0, 255)),  # blue
+        Ghost(26, 1, algorithm='Greedy', image=green, color=(0, 255, 0)),  # green
+        Ghost(26, 17, algorithm='A*', image=red, color=(255, 0, 0)),  # red
+        Ghost(26, 11, algorithm='Uniform Cost', image=yellow, color=(255, 255, 0))
     ]
 
     # Reset the score
@@ -207,6 +220,7 @@ def reset_game():
 
     # Reset the maze with pellets (2) and walls (1)
     maze = create_maze()
+
 
 def check_collision():
     for ghost in ghosts:
@@ -224,12 +238,12 @@ red = pygame.image.load("images/red.png")
 yellow = pygame.image.load("images/yellow.png")
 
 ghosts = [
-    Ghost(14, 7, 'chase', algorithm='BFS', image=blue, color=(255, 0, 0)),
-    Ghost(13, 8, 'random', algorithm='DFS', image=green, color=(0, 255, 0)),
-
-    Ghost(14, 8, 'chase', algorithm='A*', image=red, color=(0, 0, 255)),
-    Ghost(15, 8, 'random', algorithm='Uniform Cost', image=yellow, color=(255, 0, 255))
+    Ghost(26, 7,  algorithm='BFS', image=blue, color=(0, 0, 255)),  # blue
+    Ghost(26, 1,  algorithm='Greedy', image=green, color=(0, 255, 0)), # green
+    Ghost(26, 17,  algorithm='A*', image=red, color=(255, 0, 0)),     # red
+    Ghost(26, 11,  algorithm='Uniform Cost', image=yellow, color=(255, 255, 0))  # yellow
 ]
+
 dropdown_states = init_dropdown_states(ghosts)
 # Vòng lặp game
 running = True
