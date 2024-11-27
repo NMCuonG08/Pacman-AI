@@ -37,6 +37,10 @@ score = 0
 # Hàm cập nhật điểm số
 
 import pygame
+
+
+
+
 def update_score():
     global score
     score += 10
@@ -248,12 +252,15 @@ dropdown_states = init_dropdown_states(ghosts)
 # Vòng lặp game
 running = True
 clock = pygame.time.Clock()
-settings_button = pygame.Rect(SCREEN_WIDTH - 120, 20, 100, 40)
 
-start_button = Button(1150, 10, 200, 50, 'Reset', color=(0, 128, 255), hover_color=(70, 130, 180))
-quit_button = Button(1150, 100, 200, 50, 'Stop', color=(255, 0, 0), hover_color=(255, 99, 71))
-avatar_path = "C:/Users/ASUS/Pictures/Ảnh/Screenshots/x.png"
 # Game loop
+
+settings_button = Button("Setting",(1300,250),"Settings")
+start_button = Button("Reset",(1300,50),"Reset")
+quit_button = Button("Stop",(1300,150),"Stop")
+
+
+
 while running:
     screen.fill((0, 0, 0))
 
@@ -269,7 +276,7 @@ while running:
             mouse_pos = pygame.mouse.get_pos()
 
             # Nhấn nút Settings
-            if settings_button.collidepoint(mouse_pos):
+            if settings_button.is_clicked(event):
                 is_settings_open = True
 
             if is_settings_open:
@@ -340,14 +347,10 @@ while running:
             screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2))
 
     # Luôn vẽ các nút
-    draw_info_panel(screen, avatar_path)
+    draw_info_panel(screen)
+    settings_button.draw(screen)
     start_button.draw(screen)
     quit_button.draw(screen)
-    pygame.draw.rect(screen, (50, 150, 50), settings_button)
-    font = pygame.font.Font(None, 24)
-    text = font.render("Settings", True, (255, 255, 255))
-    screen.blit(text, (settings_button.x + 10, settings_button.y + 10))
-
     # Update display and clock tick
     pygame.display.flip()
     clock.tick(5)

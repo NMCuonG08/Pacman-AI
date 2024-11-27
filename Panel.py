@@ -2,27 +2,24 @@ import pygame
 SCREEN_WIDTH=1500
 SCREEN_HEIGHT=750
 
-def draw_info_panel(screen, avatar_path):
-    avatar_size = 300
-    padding = 50  # Khoảng cách từ cạnh màn hình
-    avatar_x = SCREEN_WIDTH - avatar_size - padding
-    avatar_y = SCREEN_HEIGHT - avatar_size - padding
-
-    # Kiểm tra nếu có đường dẫn ảnh
-    if avatar_path:
-        try:
-            avatar = pygame.image.load(avatar_path)
-            avatar = pygame.transform.scale(avatar, (avatar_size, avatar_size))
-            screen.blit(avatar, (avatar_x, avatar_y))
-        except pygame.error:
-            print(f"Không thể tải ảnh: {avatar_path}")
-            pygame.draw.rect(screen, (50, 50, 50), (avatar_x, avatar_y, avatar_size, avatar_size))
-            font = pygame.font.Font(None, 24)
-            text = font.render("No Image", True, (255, 255, 255))
-            screen.blit(text, (avatar_x + 10, avatar_y + avatar_size // 3))
-    else:
-        # Hiển thị ô trống nếu không có ảnh
-        pygame.draw.rect(screen, (50, 50, 50), (avatar_x, avatar_y, avatar_size, avatar_size))
-        font = pygame.font.Font(None, 24)
-        text = font.render("No Image", True, (255, 255, 255))
-        screen.blit(text, (avatar_x + 10, avatar_y + avatar_size // 3))
+def draw_info_panel(screen):
+    rect = pygame.Rect(1300, 400,50,10)
+    font = pygame.font.Font(None, 36)
+    text_surface = font.render("Ten Thanh Vien :", True, (255, 255, 0))
+    text_rect = text_surface.get_rect(center=rect.center)
+    screen.blit(text_surface, text_rect)
+    rect2 = pygame.Rect(1300, 430, 50, 10)
+    font = pygame.font.Font(None, 36)
+    text_surface = font.render("Nguyen Hai Trieu", True, (255, 255, 0))
+    text_rect = text_surface.get_rect(center=rect2.center)
+    screen.blit(text_surface, text_rect)
+    rect3 = pygame.Rect(1300, 460, 50, 10)
+    font = pygame.font.Font(None, 36)
+    text_surface = font.render("Le Cong Bao", True, (255, 255, 0))
+    text_rect = text_surface.get_rect(center=rect3.center)
+    screen.blit(text_surface, text_rect)
+    rect4 = pygame.Rect(1300, 490, 50, 10)
+    font = pygame.font.Font(None, 36)
+    text_surface = font.render("Nguyen Manh Cuong", True, (255, 255, 0))
+    text_rect = text_surface.get_rect(center=rect4.center)
+    screen.blit(text_surface, text_rect)

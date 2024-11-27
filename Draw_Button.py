@@ -1,24 +1,40 @@
 import pygame
+import pygame.sprite
+import os
+import json
 
-class Button:
-    def __init__(self, x, y, width, height, text='', color=(0, 0, 0), hover_color=(100, 100, 100), text_color=(255, 255, 255), font_size=30):
-        self.rect = pygame.Rect(x, y, width, height)
-        self.color = color
-        self.hover_color = hover_color
+
+basedir = os.path.dirname(__file__)
+images = {}
+class Button(pygame.sprite.Sprite):
+    BUTTON_IMAGE = "button"
+    BUTTON_HOVER_IMAGE = "button-hover"
+    BUTTON_TEXT_SIZE = 25
+    BUTTON_TEXT_COLOR = (255, 255, 255)
+    BUTTON_CHECK_TIME = 200
+    def __init__(self, name, position,text='',text_color=(0, 255, 220),font_size=30):
+        super().__init__()
+        self.name = name
+        self.position = position
+        self.image = pygame.image.load(os.path.join(basedir, "./images/button.png")).convert_alpha()
+        self.hover_image = pygame.image.load(os.path.join(basedir, "./images/button-hover.png")).convert_alpha()
         self.text_color = text_color
         self.text = text
         self.font = pygame.font.SysFont(None, font_size)
+        self._current_image = self.image
+        self.rect = self._current_image.get_rect(center=self.position)
 
     # Hàm vẽ button
     def draw(self, screen):
         mouse_pos = pygame.mouse.get_pos()
         if self.rect.collidepoint(mouse_pos):
-            pygame.draw.rect(screen, self.hover_color, self.rect)
+            self._current_image = self.hover_image
         else:
-            pygame.draw.rect(screen, self.color, self.rect)
+            self._current_image = self.image
 
-        pygame.draw.rect(screen, (0, 0, 0), self.rect, 2)  # Viền button
 
+        text_position = (self.position[0], self.position[1] - 2)
+        screen.blit(self._current_image, self.rect)
         text_surface = self.font.render(self.text, True, self.text_color)
         text_rect = text_surface.get_rect(center=self.rect.center)
         screen.blit(text_surface, text_rect)
