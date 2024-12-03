@@ -258,7 +258,14 @@ clock = pygame.time.Clock()
 settings_button = Button("Setting",(1300,250),"Settings")
 start_button = Button("Reset",(1300,50),"Reset")
 quit_button = Button("Stop",(1300,150),"Stop")
-
+pause_button = Button("Pause",(1300,350),"Pause")
+def handle_button_clicks(event):
+    global game_started
+    # Handle existing button clicks
+    # ...
+    # Handle pause button click
+    if pause_button.is_clicked(event):
+        game_started = not game_started 
 
 
 while running:
@@ -293,7 +300,7 @@ while running:
         # Nếu Settings đang đóng, xử lý game logic
         if not is_settings_open:
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_p:  # Dừng/tiếp tục ma
+                if event.key == pygame.K_p :  # Dừng/tiếp tục ma
                     ghosts_paused = not ghosts_paused
 
                 if event.key in [pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN]:
@@ -313,6 +320,8 @@ while running:
 
             if quit_button.is_clicked(event):
                 running = False
+            if pause_button.is_clicked(event):  # Dừng/tiếp tục ma
+                ghosts_paused = not ghosts_paused
 
     # Nếu Settings đang mở, chỉ vẽ giao diện Settings
     if is_settings_open:
@@ -351,6 +360,7 @@ while running:
     settings_button.draw(screen)
     start_button.draw(screen)
     quit_button.draw(screen)
+    pause_button.draw(screen)
     # Update display and clock tick
     pygame.display.flip()
     clock.tick(5)
