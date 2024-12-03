@@ -77,41 +77,19 @@ class Pacman:
         self.dx = dx
         self.dy = dy
 
-    def move(self, target_x, target_y, maze):
+    def move(self, maze):
         if self.move_counter >= self.move_delay:
-            if self.algorithm == 'BFS':
-                path = bfs((self.x, self.y), (target_x, target_y), maze)
-            elif self.algorithm == 'DFS':
-                path = dfs((self.x, self.y), (target_x, target_y), maze)
-            elif self.algorithm == 'A*':
-                path = a_star((self.x, self.y), (target_x, target_y), maze)
-            elif self.algorithm == 'Greedy':
-                path = greedy_search((self.x, self.y), (target_x, target_y), maze)
-            elif self.algorithm == 'Uniform Cost':
-                path = uniform_cost_search((self.x, self.y), (target_x, target_y), maze)
-            elif self.algorithm == 'Hill Climbing':
-                path = hill_climbing((self.x, self.y), (target_x, target_y), maze)
-            elif self.algorithm == 'Simulated Annealing':
-                path = simulated_annealing((self.x, self.y), (target_x, target_y), maze)
-            elif self.algorithm == 'Genetic Algorithm':
-                path = genetic_algorithm((self.x, self.y), (target_x, target_y), maze)
-            elif self.algorithm == 'Beam Search':
-                path = beam_search((self.x, self.y), (target_x, target_y), maze)
-
-            if path and len(path) > 1:
-                self.x, self.y = path[1]
-                self.trail.append((self.x, self.y))
-                # Check for food
-                if maze[self.y][self.x] == 2:
-                    update_score()
-                    maze[self.y][self.x] = 0
-                elif maze[self.y][self.x] == 3:
-                    update_score(50)
-                    maze[self.y][self.x] = 0
-                    self.is_hunting = True
-                    self.hunting_time = 5 * 60
-            else:
-                print(f"{self.algorithm} không tìm thấy lộ trình hợp lệ.")
+            if maze[self.y + self.dy][self.x + self.dx] != 1:
+                if maze[self.y + self.dy][self.x + self.dx] == 2:
+                    update_score()  # Viên đạn bình thường
+                    maze[self.y + self.dy][self.x + self.dx] = 0
+                elif maze[self.y + self.dy][self.x + self.dx] == 3:  # Viên đạn đặc biệt
+                    update_score(50)  # Tăng điểm cho viên đạn đặc biệt
+                    maze[self.y + self.dy][self.x + self.dx] = 0
+                    self.is_hunting = True  # Bắt đầu chế độ săn
+                    self.hunting_time = 5 * 60  # 5 giây ở 60 FPS
+                self.x += self.dx
+                self.y += self.dy
             self.move_counter = 0
         else:
             self.move_counter += 1
