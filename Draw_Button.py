@@ -10,7 +10,7 @@ class Button(pygame.sprite.Sprite):
     BUTTON_IMAGE = "button"
     BUTTON_HOVER_IMAGE = "button-hover"
     BUTTON_TEXT_SIZE = 25
-    BUTTON_TEXT_COLOR = (255, 255, 255)
+    BUTTON_TEXT_COLOR = (0, 0, 0)
     BUTTON_CHECK_TIME = 200
     def __init__(self, name, position,text='',text_color=(0, 255, 220),font_size=30):
         super().__init__()

@@ -1,8 +1,9 @@
 import pygame
 import sys
 import subprocess
-import sys
 import os
+from Draw_Button import Button
+
 # Khởi tạo pygame
 pygame.init()
 
@@ -12,64 +13,29 @@ SCREEN_HEIGHT = 600
 SCREEN_TITLE = "Chọn Chế Độ Chơi"
 
 # Màu sắc
-BUTTON_COLOR = (0, 0, 255)          # Màu xanh dương
+BUTTON_COLOR = (0, 0, 0)          # Màu đen cho nút
 BUTTON_HOVER_COLOR = (0, 255, 0)    # Màu xanh lá khi hover
-TEXT_COLOR = (255, 255, 255)        # Màu trắng cho chữ
+TEXT_COLOR = (0, 0, 0)        # Màu đen cho chữ
 BORDER_COLOR = (0, 0, 0)            # Màu đen cho viền
-BACKGROUND_COLOR = (255, 255, 255)  # Màu trắng cho nền
+BACKGROUND_COLOR = (0, 0, 0)  # Màu trắng cho nền
 
 # Cài đặt font chữ
 FONT = pygame.font.SysFont('Arial', 24, bold=True)
-
-class Button:
-    def __init__(self, text, center_x, center_y, width, height, action_function):
-        self.text = text
-        self.center_x = center_x
-        self.center_y = center_y
-        self.width = width
-        self.height = height
-        self.color = BUTTON_COLOR
-        self.hover_color = BUTTON_HOVER_COLOR
-        self.border_color = BORDER_COLOR
-        self.border_width = 3
-        self.current_color = self.color
-        self.action_function = action_function
-        self.rect = pygame.Rect(0, 0, self.width, self.height)
-        self.rect.center = (self.center_x, self.center_y)
-        self.text_surf = FONT.render(self.text, True, TEXT_COLOR)
-        self.text_rect = self.text_surf.get_rect(center=self.rect.center)
-
-    def draw(self, screen):
-        # Vẽ hình chữ nhật với màu nền và bo góc
-        pygame.draw.rect(screen, self.current_color, self.rect, border_radius=10)
-        # Vẽ viền cho nút
-        pygame.draw.rect(screen, self.border_color, self.rect, self.border_width, border_radius=10)
-        # Vẽ văn bản lên nút
-        screen.blit(self.text_surf, self.text_rect)
-
-    def check_mouse_press(self, pos):
-        if self.rect.collidepoint(pos):
-            self.action_function()
-
-    def check_mouse_hover(self, pos):
-        if self.rect.collidepoint(pos):
-            self.current_color = self.hover_color
-        else:
-            self.current_color = self.color
 
 class PlayModeView:
     def __init__(self, screen):
         self.screen = screen
         self.button_list = []
 
-        # Tạo nút
-        self.button_list.append(Button("Play Pacman and Ghost AI", SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 30, 250, 60, self.play_mode_1))
-        self.button_list.append(Button("Play Pacman AI mode ", SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50, 250, 60, self.play_mode_2))
+        # Tạo các nút bấm với text và vị trí
+        # Chú ý: position là một tuple (x, y), text là tên nút
+        self.button_list.append(Button("Play Pacman and Ghost AI", (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 30), text="Play Pacman and Ghost AI"))
+        self.button_list.append(Button("Play Pacman AI mode", (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50), text="Play Pacman AI mode"))
 
     def draw(self):
         self.screen.fill(BACKGROUND_COLOR)
         for button in self.button_list:
-            button.draw(self.screen)
+            button.draw(self.screen)  # Vẽ nút lên màn hình
         pygame.display.flip()
 
     def handle_event(self, event):
@@ -77,13 +43,20 @@ class PlayModeView:
             if event.button == 1:  # Nhấn chuột trái
                 pos = event.pos
                 for button in self.button_list:
-                    button.check_mouse_press(pos)
+                    if button.is_clicked(event):  # Kiểm tra nếu nút bị nhấn
+                        if button.name == "Play Pacman and Ghost AI":
+                            self.play_mode_1()
+                        elif button.name == "Play Pacman AI mode":
+                            self.play_mode_2()
         elif event.type == pygame.MOUSEMOTION:
             pos = event.pos
             for button in self.button_list:
-                button.check_mouse_hover(pos)
+                # Lấy vị trí con trỏ chuột và kiểm tra xem có hover trên nút hay không
+                if button.rect.collidepoint(pos):
+                    button.image = button.hover_image
+                else:
+                    button.image = button.image
 
-    
     def play_mode_1(self):
         script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Main.py')
         subprocess.Popen([sys.executable, script_path], cwd=os.path.dirname(script_path))
